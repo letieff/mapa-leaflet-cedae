@@ -1,0 +1,1423 @@
+<p>&nbsp;</p>
+<script>
+links = {
+        "aegea": "https://www.aegea.com.br/",
+        "aguas do rio": "https://aguasdorio.com.br/",
+        "igua rio": "https://igua.com.br/",
+        "bloco 3": "https://cedae.com.br/localizar"
+    }
+
+</script>
+
+<h2 class="titulo-5">Qual é a minha concessionária?</h2>
+<link crossorigin="" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" rel="stylesheet" /><script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js" crossorigin=""></script>
+<style type="text/css">#mapDIV {
+        height: 762px;
+        width: 700px;
+        border: solid 1px black;
+    }
+</style>
+<style type="text/css">@media only screen and (max-width: 479px)
+{
+    #mapDIV {
+    height: 379px;
+    width: 338px;
+    border: solid 1px black;
+    float: center;
+}
+
+}
+  #searchResult li:nth-child(2n+1) {
+        background: #f7f7f7;
+        width: 100%;
+    }
+
+    #searchResult li .more {
+        font-family: Conv_HelveticaNeueLTPro-Bd;
+        display: block;
+        color: #0072bc;
+        font-size: 18px;
+        position: relative;
+        float: left;
+        width: 100%;
+        height: 36px;
+        line-height: 36px;
+    }
+
+    .listaConc {
+        text-indent: inherit !important;
+    }
+
+    .styledSelect,
+    .select-options {
+        display: none !important;
+    }
+
+    @media only screen and (min-width: 479px){.filter-tp5 .wrap-buscar {
+    width: 29.7757% !important;
+}}
+    .align-left{
+float: left!important;
+}
+</style>
+<div class="wrapper">
+<div class="filter-tp5 filter">
+<div class="form_inner">
+<div class="row">
+<div class="select">
+<div class="select-inside"><span action="" id="searchFormMap"><select class="listaConc" id="" name="" onchange="carregarItens({})"><option value="0">-- TODAS REGIÕES --</option> </select> </span></div>
+</div>
+</div>
+</div>
+
+<div class="wrap-buscar align-left">
+<div class="row"><label>Buscar</label> <input id="busca-bairro" name="" placeholder="Buscar Bairro" type="text" /></div>
+
+<div class="row submit"><input id="" name="" onclick="carregarItens({'bairro':document.getElementById('busca-bairro').value});return false" type="submit" value="OK" /></div>
+</div>
+
+<div class="wrap-buscar">
+<div class="row"><label>Buscar</label> <input id="busca-cidade" name="" placeholder="Buscar Cidade" type="text" /></div>
+
+<div class="row submit"><input id="" name="" onclick="carregarItens({'cidade':document.getElementById('busca-cidade').value});return false" type="submit" value="OK" /></div>
+</div>
+</div>
+
+<ul id="searchResult"><!-- <li class="active">
+                <h4 class="local-name">BELFORD ROXO</h4> <span class="adress"><b>Bairro: </b>Campo Grande</span><a class="more-info" href="0">Mais informações</a>
+            </li>
+            <li class="">
+                <h4 class="local-name">DUQUE DE CAXIAS</h4> <span class="adress"><b>Bairro: </b>Av. Dr. Manoel Teles,
+                    237</span><a class="more-info" href="1">Mais informações</a>
+            </li> -->
+</ul>
+
+<div id="mapDIV" style="float:right">i</div>
+</div>
+<script>
+    
+    var dadosJson;
+
+    $(window).load(function () {
+        getDados() 
+        console.log("carregou itens...")
+    });
+
+
+    function getDados() {
+        $.ajax({
+            url: 'https://cedae.com.br/portals/0/sc/concessao/AppListaBack.aspx',
+            cache: false,
+            type: "POST",
+            success: function (response) {
+
+                dadosJson = JSON.parse(response);
+                carregarLista()
+                carregarItens({})
+
+            },
+            error: function () {
+                alert('deu ruim')
+            }
+        })
+    }
+
+    function carregarLista() {
+        var listaConc = document.getElementsByClassName('listaConc')[0]
+        for (var i = 0; i < dadosJson.Concessionarias.length; i++) {
+            var itemLista = document.createElement("option")
+            itemLista.value = dadosJson.Concessionarias[i]
+            itemLista.innerHTML = dadosJson.Concessionarias[i].toUpperCase()
+            listaConc.appendChild(itemLista)
+        }
+    }
+
+    function carregarItens({cidade:cidade,bairro:bairro}) {
+        limparItens();
+       var modeloItens = '<h4 class="local-name">#CIDADE#</h4> <span class="adress"><b>Bairro: </b>#BAIRRO#</span><span style="display:block" class="more" href="1"><a href="#LINK#">#EMPRESA#</a></span>'
+        var listaItens = document.getElementById('searchResult')
+
+        var itemJson = filtraRegiao(cidade,bairro)
+        var item;
+
+        var aux;
+        for (var i = 0; i < itemJson.length; i++) {
+            item = document.createElement('li')
+            aux = modeloItens.replace('#BAIRRO#', itemJson[i].Bairro);
+            aux = aux.replace('#CIDADE#', itemJson[i].Cidade);
+            aux = aux.replace('#EMPRESA#', itemJson[i].Concessionaria);
+          aux = aux.replace('#LINK#', links[checkString(itemJson[i].Concessionaria)]);
+
+            
+
+            item.innerHTML = aux
+            listaItens.appendChild(item)
+
+        }
+    }
+
+    function limparItens() {
+        var listaItens = document.getElementById('searchResult')
+        var tamanhoLista = listaItens.children.length;
+
+        for (var i = 0; i < tamanhoLista; i++)
+            listaItens.removeChild(listaItens.children[0])
+    }
+
+    function filtraRegiao(cidade,bairro) {
+        var regiao = document.getElementsByClassName('listaConc')[0].value
+        var lista = dadosJson.item
+
+        listaAtualizada = []
+
+        if (cidade)
+            return buscarCidade(lista, cidade)
+
+        if (bairro)
+            return buscarBairro(lista, bairro)
+
+        for (var i = 0; i < lista.length; i++) {
+            if (lista[i].Concessionaria == regiao)
+                listaAtualizada.push(lista[i])
+               
+        }
+
+        if (regiao == 0)
+            listaAtualizada = lista
+        
+        return listaAtualizada
+    }
+
+    function buscarCidade(lista, cidade) {
+        listaAtualizada = []
+        console.log(cidade)
+        for (var i = 0; i < lista.length; i++) {
+            if (checkString(lista[i].Cidade.substring(0,cidade.length)) == checkString(cidade))
+                listaAtualizada.push(lista[i])
+        }
+
+        return listaAtualizada
+    }
+
+    function buscarBairro(lista, bairro) {
+        listaAtualizada = []
+        console.log(bairro)
+        for (var i = 0; i < lista.length; i++) {
+            if (checkString(lista[i].Bairro.substring(0,bairro.length)) == checkString(bairro))
+                listaAtualizada.push(lista[i])
+        }
+
+        return listaAtualizada
+    }
+
+    function solicitarDadosMock() {
+        var dadosString = '{ "Concessionarias": [ "Sanepar", "Rio Aguas" ],"item": [ { "Concessionaria": "Sanepar", "Cidade": "Rio de janeiro", "Bairro": "Campo Grande" },{ "Concessionaria": "Rio Aguas", "Cidade": "Sao Paulo", "Bairro": "Capao Redondo" } ] }'
+        dadosJson = JSON.parse(dadosString);
+    }
+
+    //Normaliza uma String(removendo acentos e caracteres especiais)
+    function checkString(texto) {
+        texto = texto.toLowerCase()
+        texto = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return texto
+    }
+
+</script><script>
+if (window.screen.width < 477) {
+        var map = L.map(document.getElementById('mapDIV'), {
+            center: [-22.128050543143395, -42.454834096133716],
+            zoom: 7
+        })
+    }
+    else {
+        var map = L.map(document.getElementById('mapDIV'), {
+            center: [-21.892, -42.805],
+            zoom: 8
+        })
+    }
+    var basemap = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    });
+    basemap.addTo(map);
+
+
+	// ÁGUAS DO RIO - CIDADES //
+
+    var earthquakeMarker = L.marker([-21.62239, -42.10242],
+        { title: 'Aperibé' });
+    earthquakeMarker.bindPopup("Aperibé - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.4121, -42.1969],
+        { title: 'Miracema' });
+    earthquakeMarker.bindPopup("Miracema - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.5767435, -41.9156882],
+        { title: 'Cambuci' });
+    earthquakeMarker.bindPopup("Cambuci - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.4628, -42.6535],
+        { title: 'Cachoeiras de Macacu' });
+    earthquakeMarker.bindPopup("Cachoeiras de Macacu - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.9750365, -42.3770096],
+        { title: 'Cantagalo' });
+    earthquakeMarker.bindPopup("Cantagalo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.4767, -42.2043],
+        { title: 'Casimiro de Abreu (Distrito de Barra de São João)' });
+    earthquakeMarker.bindPopup("Casimiro de Abreu (Distrito de Barra de São João) - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.0288, -42.3609],
+        { title: 'Cordeiro' });
+    earthquakeMarker.bindPopup("Cordeiro - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.0531607, -42.5262887],
+        { title: 'Duas Barras' });
+    earthquakeMarker.bindPopup("Duas Barras - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.6607, -43.0424],
+        { title: 'Magé' });
+    earthquakeMarker.bindPopup("Magé - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9205, -42.8192],
+        { title: 'Maricá' });
+    earthquakeMarker.bindPopup("Maricá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.6697898, -42.0870205],
+        { title: 'Itaocara' });
+    earthquakeMarker.bindPopup("Itaocara - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7509, -42.8522],
+        { title: 'Itaboraí' });
+    earthquakeMarker.bindPopup("Itaboraí - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7103, -42.6270],
+        { title: 'Rio Bonito' });
+    earthquakeMarker.bindPopup("Rio Bonito - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.9580, -42.1339],
+        { title: 'São Sebastião do Alto' });
+    earthquakeMarker.bindPopup("São Sebastião do Alto - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9255, -42.5075],
+        { title: 'Saquarema (3° Distrito)' });
+    earthquakeMarker.bindPopup("Saquarema (3° Distrito) - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.4705, -41.1237],
+        { title: 'São Francisco do Itabapoana' });
+    earthquakeMarker.bindPopup("São Francisco do Itabapoana - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8221, -43.0312],
+        { title: 'São Gonçalo' });
+    earthquakeMarker.bindPopup("São Gonçalo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7382, -42.7190],
+        { title: 'Tanguá' });
+    earthquakeMarker.bindPopup("Tanguá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7683, -43.4049],
+        { title: 'Belford Roxo' });
+    earthquakeMarker.bindPopup("Belford Roxo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7901, -43.3088],
+        { title: 'Duque de Caxias' });
+    earthquakeMarker.bindPopup("Duque de Caxias - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.6463, -43.6542],
+        { title: 'Japeri' });
+    earthquakeMarker.bindPopup("Japeri - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7831, -43.4293],
+        { title: 'Mesquita' });
+    earthquakeMarker.bindPopup("Mesquita - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8088, -43.4138],
+        { title: 'Nilópolis' });
+    earthquakeMarker.bindPopup("Nilópolis - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7596, -43.4506],
+        { title: 'Nova Iguaçu' });
+    earthquakeMarker.bindPopup("Nova Iguaçu - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7186, -43.5574],
+        { title: 'Queimados' });
+    earthquakeMarker.bindPopup("Queimados - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8023, -43.3728],
+        { title: 'São João de Meriti' });
+    earthquakeMarker.bindPopup("São João de Meriti - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+	
+	// ÁGUAS DO RIO - RIO DE JANEIRO REGIÃO 1 //
+
+    var earthquakeMarker = L.marker([-22.9515, -43.1863],
+        { title: 'Botafogo' });
+    earthquakeMarker.bindPopup("Botafogo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9269, -43.1802],
+        { title: 'Catete' });
+    earthquakeMarker.bindPopup("Catete - Águas do Rio");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.9720, -43.1843],
+        { title: 'Copacabana' });
+    earthquakeMarker.bindPopup("Copacabana - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9415, -43.2006],
+        { title: 'Cosme Velho' });
+    earthquakeMarker.bindPopup("Cosme Velho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.93398, -43.17457],
+        { title: 'Flamengo' });
+    earthquakeMarker.bindPopup("Flamengo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9814, -43.2383],
+        { title: 'Gávea' });
+    earthquakeMarker.bindPopup("Gávea - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.91832, -43.17392],
+        { title: 'Glória' });
+    earthquakeMarker.bindPopup("Glória - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9546, -43.2005],
+        { title: 'Humaitá' });
+    earthquakeMarker.bindPopup("Humaitá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.98396, -43.20222],
+        { title: 'Ipanema' });
+    earthquakeMarker.bindPopup("Ipanema - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9638, -43.2254],
+        { title: 'Jardim Botânico' });
+    earthquakeMarker.bindPopup("Jardim Botânico - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.96247, -43.20249],
+        { title: 'Lagoa' });
+    earthquakeMarker.bindPopup("Lagoa - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.93432, -43.18780],
+        { title: 'Laranjeiras' });
+    earthquakeMarker.bindPopup("Laranjeiras - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.98356, -43.22494],
+        { title: 'Leblon' });
+    earthquakeMarker.bindPopup("Leblon - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9617, -43.1669],
+        { title: 'Leme' });
+    earthquakeMarker.bindPopup("Leme - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9885, -43.2482],
+        { title: 'Rocinha' });
+    earthquakeMarker.bindPopup("Rocinha - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9913, -43.2676],
+        { title: 'São Conrado' });
+    earthquakeMarker.bindPopup("São Conrado - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9541, -43.1680],
+        { title: 'Urca' });
+    earthquakeMarker.bindPopup("Urca - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9952, -43.2409],
+        { title: 'Vidigal' });
+    earthquakeMarker.bindPopup("Vidigal - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+
+	// ÁGUAS DO RIO - RIO DE JANEIRO REGIÃO 4 //
+	
+    var earthquakeMarker = L.marker([-22.8861, -43.2999],
+        { title: 'Abolição' });
+    earthquakeMarker.bindPopup("Abolição - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8841, -43.3284],
+        { title: 'Cascadura' });
+    earthquakeMarker.bindPopup("Cascadura - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9021, -43.2969],
+        { title: 'Engenho de Dentro' });
+    earthquakeMarker.bindPopup("Engenho de Dentro - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8051, -43.1933],
+        { title: 'Jardim Carioca' });
+    earthquakeMarker.bindPopup("Jardim Carioca - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8166, -43.3012],
+        { title: 'Parada de Lucas' });
+    earthquakeMarker.bindPopup("Parada de Lucas - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8252, -43.1706],
+        { title: 'Ribeira' });
+    earthquakeMarker.bindPopup("Ribeira - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8914, -43.2267],
+        { title: 'Vasco da Gama' });
+    earthquakeMarker.bindPopup("Vasco da Gama - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8216, -43.3407],
+        { title: 'Acari' });
+    earthquakeMarker.bindPopup("Acari - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9193, -43.1971],
+        { title: 'Catumbi' });
+    earthquakeMarker.bindPopup("Catumbi - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9090, -43.2679],
+        { title: 'Engenho Novo' });
+    earthquakeMarker.bindPopup("Engenho Novo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8128, -43.2008],
+        { title: 'Jardim Guanabara' });
+    earthquakeMarker.bindPopup("Jardim Guanabara - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8350, -43.4157],
+        { title: 'Parque Anchieta' });
+    earthquakeMarker.bindPopup("Parque Anchieta - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8375, -43.3964],
+        { title: 'Ricardo de Albuquerque' });
+    earthquakeMarker.bindPopup("Ricardo de Albuquerque - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8588, -43.3282],
+        { title: 'Vaz Lobo' });
+    earthquakeMarker.bindPopup("Vaz Lobo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9110, -43.3122],
+        { title: 'Água Santa' });
+    earthquakeMarker.bindPopup("Água Santa - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8703, -43.3167],
+        { title: 'Cavalcanti' });
+    earthquakeMarker.bindPopup("Cavalcanti - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9164, -43.2036],
+        { title: 'Estácio' });
+    earthquakeMarker.bindPopup("Estácio - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9129, -43.1822],
+        { title: 'Lapa' });
+    earthquakeMarker.bindPopup("Lapa - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8137, -43.3431],
+        { title: 'Parque Colúmbia' });
+    earthquakeMarker.bindPopup("Parque Colúmbia - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9278, -43.2088],
+        { title: 'Rio Comprido' });
+    earthquakeMarker.bindPopup("Rio Comprido - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8561, -43.3159],
+        { title: 'Vicente de Carvalho' });
+    earthquakeMarker.bindPopup("Vicente de Carvalho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9603, -43.2535],
+        { title: 'Alto da Boa Vista' });
+    earthquakeMarker.bindPopup("Alto da Boa Vista - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9042, -43.1830],
+        { title: 'Centro' });
+    earthquakeMarker.bindPopup("Centro - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.7850, -43.1694],
+        { title: 'Freguesia (Ilha)' });
+    earthquakeMarker.bindPopup("Freguesia (Ilha) - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9132, -43.2856],
+        { title: 'Lins de Vasconcelos' });
+    earthquakeMarker.bindPopup("Lins de Vasconcelos - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8121, -43.3593],
+        { title: 'Pavuna' });
+    earthquakeMarker.bindPopup("Pavuna - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8993, -43.2489],
+        { title: 'Rocha' });
+    earthquakeMarker.bindPopup("Rocha - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8085, -43.3098],
+        { title: 'Vigário Geral' });
+    earthquakeMarker.bindPopup("Vigário Geral - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8230, -43.3991],
+        { title: 'Anchieta' });
+    earthquakeMarker.bindPopup("Anchieta - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9100, -43.2017],
+        { title: 'Cidade Nova' });
+    earthquakeMarker.bindPopup("Cidade Nova - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8073, -43.2355],
+        { title: 'Galeão' });
+    earthquakeMarker.bindPopup("Galeão - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8714, -43.3372],
+        { title: 'Madureira' });
+    earthquakeMarker.bindPopup("Madureira - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8380, -43.2765],
+        { title: 'Penha' });
+    earthquakeMarker.bindPopup("Penha - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8502, -43.3465],
+        { title: 'Rocha Miranda' });
+    earthquakeMarker.bindPopup("Rocha Miranda - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8435, -43.3101],
+        { title: 'Vila da Penha' });
+    earthquakeMarker.bindPopup("Vila da Penha - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9287, -43.2533],
+        { title: 'Andaraí' });
+    earthquakeMarker.bindPopup("Andaraí - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8555, -43.2310],
+        { title: 'Cidade Universitária' });
+    earthquakeMarker.bindPopup("Cidade Universitária - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8977, -43.1929],
+        { title: 'Gamboa' });
+    earthquakeMarker.bindPopup("Gamboa - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9040, -43.2365],
+        { title: 'Mangueira' });
+    earthquakeMarker.bindPopup("Mangueira - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8324, -43.2848],
+        { title: 'Penha Circular' });
+    earthquakeMarker.bindPopup("Penha Circular - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9016, -43.2602],
+        { title: 'Sampaio' });
+    earthquakeMarker.bindPopup("Sampaio - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9148, -43.2484],
+        { title: 'Vila Isabel' });
+    earthquakeMarker.bindPopup("Vila Isabel - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.7915, -43.1809],
+        { title: 'Bancários' });
+    earthquakeMarker.bindPopup("Bancários - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8048, -43.1806],
+        { title: 'Cocotá' });
+    earthquakeMarker.bindPopup("Cocotá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9296, -43.2696],
+        { title: 'Grajaú' });
+    earthquakeMarker.bindPopup("Grajaú - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8795, -43.2458],
+        { title: 'Manguinhos' });
+    earthquakeMarker.bindPopup("Manguinhos - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8923, -43.3108],
+        { title: 'Piedade' });
+    earthquakeMarker.bindPopup("Piedade - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9212, -43.1886],
+        { title: 'Santa Teresa' });
+    earthquakeMarker.bindPopup("Santa Teresa - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8532, -43.3032],
+        { title: 'Vila Kosmos' });
+    earthquakeMarker.bindPopup("Vila Kosmos - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8346, -43.3625],
+        { title: 'Barros Filho' });
+    earthquakeMarker.bindPopup("Barros Filho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8320, -43.3501],
+        { title: 'Coelho Neto' });
+    earthquakeMarker.bindPopup("Coelho Neto - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8373, -43.3750],
+        { title: 'Guadalupe' });
+    earthquakeMarker.bindPopup("Guadalupe - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9133, -43.2279],
+        { title: 'Maracanã' });
+    earthquakeMarker.bindPopup("Maracanã - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8789, -43.2956],
+        { title: 'Pilares' });
+    earthquakeMarker.bindPopup("Pilares - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9007, -43.2037],
+        { title: 'Santo Cristo' });
+    earthquakeMarker.bindPopup("Santo Cristo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8884, -43.3649],
+        { title: 'Vila Valqueire' });
+    earthquakeMarker.bindPopup("Vila Valqueire - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8920, -43.2403],
+        { title: 'Benfica' });
+    earthquakeMarker.bindPopup("Benfica - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8392, -43.3349],
+        { title: 'Colégio' });
+    earthquakeMarker.bindPopup("Colégio - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8736, -43.2614],
+        { title: 'Higienópolis' });
+    earthquakeMarker.bindPopup("Higienópolis - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8589, -43.2425],
+        { title: 'Maré' });
+    earthquakeMarker.bindPopup("Maré - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8169, -43.1798],
+        { title: 'Pitangueiras' });
+    earthquakeMarker.bindPopup("Pitangueiras - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8991, -43.2221],
+        { title: 'São Cristóvão' });
+    earthquakeMarker.bindPopup("São Cristóvão - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8292, -43.3157],
+        { title: 'Vista Alegre' });
+    earthquakeMarker.bindPopup("Vista Alegre - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8665, -43.3613],
+        { title: 'Bento Ribeiro' });
+    earthquakeMarker.bindPopup("Bento Ribeiro - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8588, -43.2748],
+        { title: 'Complexo do Alemão' });
+    earthquakeMarker.bindPopup("Complexo do Alemão - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8464, -43.3555],
+        { title: 'Honório Gurgel' });
+    earthquakeMarker.bindPopup("Honório Gurgel - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8596, -43.3699],
+        { title: 'Marechal Hermes' });
+    earthquakeMarker.bindPopup("Marechal Hermes - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.7997, -43.2069],
+        { title: 'Portuguesa' });
+    earthquakeMarker.bindPopup("Portuguesa - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9031, -43.2442],
+        { title: 'São Francisco Xavier' });
+    earthquakeMarker.bindPopup("São Francisco Xavier - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8210, -43.1758],
+        { title: 'Zumbi' });
+    earthquakeMarker.bindPopup("Zumbi - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8656, -43.2533],
+        { title: 'Bonsucesso' });
+    earthquakeMarker.bindPopup("Bonsucesso - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8191, -43.2916],
+        { title: 'Cordovil' });
+    earthquakeMarker.bindPopup("Cordovil - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8047, -43.2200],
+        { title: 'Ilha do Governador' });
+    earthquakeMarker.bindPopup("Ilha do Governador - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8828, -43.2638],
+        { title: 'Maria da Graça' });
+    earthquakeMarker.bindPopup("Maria da Graça - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9111, -43.2132],
+        { title: 'Praça da Bandeira' });
+    earthquakeMarker.bindPopup("Praça da Bandeira - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8969, -43.1842],
+        { title: 'Saúde' });
+    earthquakeMarker.bindPopup("Saúde - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8316, -43.2975],
+        { title: 'Brás de Pina' });
+    earthquakeMarker.bindPopup("Brás de Pina - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8246, -43.3700],
+        { title: 'Costa Barros' });
+    earthquakeMarker.bindPopup("Costa Barros - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8714, -43.2824],
+        { title: 'Inhaúma' });
+    earthquakeMarker.bindPopup("Inhaúma - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9024, -43.2812],
+        { title: 'Méier' });
+    earthquakeMarker.bindPopup("Méier - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.7975, -43.1867],
+        { title: 'Tauá' });
+    earthquakeMarker.bindPopup("Tauá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8896, -43.2745],
+        { title: 'Cachambi' });
+    earthquakeMarker.bindPopup("Cachambi - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8790, -43.2726],
+        { title: 'Del Castilho' });
+    earthquakeMarker.bindPopup("Del Castilho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8350, -43.3234],
+        { title: 'Irajá' });
+    earthquakeMarker.bindPopup("Irajá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.7963, -43.1975],
+        { title: 'Moneró' });
+    earthquakeMarker.bindPopup("Moneró - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8103, -43.1800],
+        { title: 'Praia da Bandeira' });
+    earthquakeMarker.bindPopup("Praia da Bandeira - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9331, -43.2382],
+        { title: 'Tijuca' });
+    earthquakeMarker.bindPopup("Tijuca - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8216, -43.1837],
+        { title: 'Cacuia' });
+    earthquakeMarker.bindPopup("Cacuia - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8969, -43.3042],
+        { title: 'Encantado' });
+    earthquakeMarker.bindPopup("Encantado - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8931, -43.2571],
+        { title: 'Jacaré' });
+    earthquakeMarker.bindPopup("Jacaré - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8482, -43.2707],
+        { title: 'Olaria' });
+    earthquakeMarker.bindPopup("Olaria - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8953, -43.3254],
+        { title: 'Quintino Bocaiúva' });
+    earthquakeMarker.bindPopup("Quintino Bocaiúva - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8942, -43.2854],
+        { title: 'Todos os Santos' });
+    earthquakeMarker.bindPopup("Todos os Santos - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8800, -43.2214],
+        { title: 'Caju' });
+    earthquakeMarker.bindPopup("Caju - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8725, -43.3254],
+        { title: 'Engenheiro Leal' });
+    earthquakeMarker.bindPopup("Engenheiro Leal - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8869, -43.2580],
+        { title: 'Jacarezinho' });
+    earthquakeMarker.bindPopup("Jacarezinho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8700, -43.3505],
+        { title: 'Oswaldo Cruz' });
+    earthquakeMarker.bindPopup("Oswaldo Cruz - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8516, -43.2556],
+        { title: 'Ramos' });
+    earthquakeMarker.bindPopup("Ramos - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8676, -43.3066],
+        { title: 'Tomás Coelho' });
+    earthquakeMarker.bindPopup("Tomás Coelho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8847, -43.3478],
+        { title: 'Campinho' });
+    earthquakeMarker.bindPopup("Campinho - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8610, -43.2942],
+        { title: 'Engenho da Rainha' });
+    earthquakeMarker.bindPopup("Engenho da Rainha - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8094, -43.3239],
+        { title: 'Jardim América' });
+    earthquakeMarker.bindPopup("Jardim América - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.7580, -43.1093],
+        { title: 'Paquetá' });
+    earthquakeMarker.bindPopup("Paquetá - Águas do Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9025, -43.2552],
+        { title: 'Riachuelo' });
+    earthquakeMarker.bindPopup("Riachuelo - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8614, -43.3417],
+        { title: 'Turiaçu' });
+    earthquakeMarker.bindPopup("Turiaçu - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8989, -43.3506],
+        { title: 'Praça Seca (Parcial)' });
+    earthquakeMarker.bindPopup("Praça Seca (Parcial) - Águas do Rio");
+    earthquakeMarker.addTo(map);
+
+
+	// IGUÁ RIO //
+
+    var earthquakeMarker = L.marker([-22.4555, -43.4729],
+        { title: 'Miguel Pereira' });
+    earthquakeMarker.bindPopup("Miguel Pereira - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.4288, -43.4262],
+        { title: 'Paty dos Alferes' });
+    earthquakeMarker.bindPopup("Paty dos Alferes - Iguá Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9557, -43.3383],
+        { title: 'Anil' });
+    earthquakeMarker.bindPopup("Anil - Iguá Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9997, -43.3660],
+        { title: 'Barra da Tijuca' });
+    earthquakeMarker.bindPopup("Barra da Tijuca - Iguá Rio");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.9710, -43.4312],
+        { title: 'Camorim' });
+    earthquakeMarker.bindPopup("Camorim - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9480, -43.3629],
+        { title: 'Cidade de Deus' });
+    earthquakeMarker.bindPopup("Cidade de Deus - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9520, -43.3873],
+        { title: 'Curicica' });
+    earthquakeMarker.bindPopup("Curicica - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9409, -43.3423],
+        { title: 'Freguesia (Jacarepaguá)' });
+    earthquakeMarker.bindPopup("Freguesia (Jacarepaguá) - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-23.0078, -43.2872],
+        { title: 'Joá' });
+    earthquakeMarker.bindPopup("Joá - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9290, -43.3534],
+        { title: 'Pechincha' });
+    earthquakeMarker.bindPopup("Pechincha - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9665, -43.3713],
+        { title: 'Jacarepaguá' });
+    earthquakeMarker.bindPopup("Jacarepaguá - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9870, -43.3049],
+        { title: 'Itanhangá' });
+    earthquakeMarker.bindPopup("Itanhangá - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-23.0470, -43.5334],
+        { title: 'Grumari' });
+    earthquakeMarker.bindPopup("Grumari - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9583, -43.3512],
+        { title: 'Gardênia Azul' });
+    earthquakeMarker.bindPopup("Gardênia Azul - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8992, -43.3531],
+        { title: 'Praça Seca (Parcial)' });
+    earthquakeMarker.bindPopup("Praça Seca (Parcial) - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-23.0182, -43.4634],
+        { title: 'Recreio dos Bandeirantes' });
+    earthquakeMarker.bindPopup("Recreio dos Bandeirantes - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9152, -43.3557],
+        { title: 'Tanque' });
+    earthquakeMarker.bindPopup("Tanque - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9219, -43.3847],
+        { title: 'Taquara' });
+    earthquakeMarker.bindPopup("Taquara - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9708, -43.4969],
+        { title: 'Vargem Grande' });
+    earthquakeMarker.bindPopup("Vargem Grande - Iguá Rio");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9816, -43.4581],
+        { title: 'Vargem Pequena' });
+    earthquakeMarker.bindPopup("Vargem Pequena - Iguá Rio");
+    earthquakeMarker.addTo(map);
+
+
+	// BLOCO 3 //
+	
+    var earthquakeMarker = L.marker([-22.1508, -42.4187],
+        { title: 'Bom Jardim' });
+    earthquakeMarker.bindPopup("Bom Jardim - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-21.1324, -41.6804],
+        { title: 'Bom Jesus do Itabapoana' });
+    earthquakeMarker.bindPopup("Bom Jesus do Itabapoana - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.1849, -41.6622],
+        { title: 'Carapebus' });
+    earthquakeMarker.bindPopup("Carapebus - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.1162, -41.4852],
+        { title: 'Carmo' });
+    earthquakeMarker.bindPopup("Carmo - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8627, -43.7755],
+        { title: 'Itaguaí' });
+    earthquakeMarker.bindPopup("Itaguaí - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.2023, -41.8881],
+        { title: 'Itaperuna' });
+    earthquakeMarker.bindPopup("Itaperuna - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-21.1418, -42.4900],
+        { title: 'Macuco' });
+    earthquakeMarker.bindPopup("Macuco - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-21.0358, -41.9815],
+        { title: 'Natividade' });
+    earthquakeMarker.bindPopup("Natividade - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.6077, -43.7091],
+        { title: 'Paracambi' });
+    earthquakeMarker.bindPopup("Paracambi - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.5075, -44.0016],
+        { title: 'Pinheiral' });
+    earthquakeMarker.bindPopup("Pinheiral - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.6229, -43.8986],
+        { title: 'Piraí' });
+    earthquakeMarker.bindPopup("Piraí - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.7192, -44.1431],
+        { title: 'Rio Claro' });
+    earthquakeMarker.bindPopup("Rio Claro - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.5227, -41.9458],
+        { title: 'Rio das Ostras' });
+    earthquakeMarker.bindPopup("Rio das Ostras - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.6434, -41.7549],
+        { title: 'São Fidélis' });
+    earthquakeMarker.bindPopup("São Fidélis - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.3569, -41.9389],
+        { title: 'São José de Ubá' });
+    earthquakeMarker.bindPopup("São José de Ubá - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.7429, -43.6998],
+        { title: 'Seropédica' });
+    earthquakeMarker.bindPopup("Seropédica - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.0576, -42.0653],
+        { title: 'Trajano de Moraes' });
+    earthquakeMarker.bindPopup("Trajano de Moraes - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.3958, -43.6624],
+        { title: 'Vassouras' });
+    earthquakeMarker.bindPopup("Vassouras - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8781, -43.4492],
+        { title: 'Padre Miguel' });
+    earthquakeMarker.bindPopup("Padre Miguel - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8746, -43.4648],
+        { title: 'Bangu' });
+    earthquakeMarker.bindPopup("Bangu - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.8885, -43.4913],
+        { title: 'Senador Camará' });
+    earthquakeMarker.bindPopup("Senador Camará - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8336, -43.4741],
+        { title: 'Gericinó' });
+    earthquakeMarker.bindPopup("Gericinó - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8506, -43.3872],
+        { title: 'Deodoro' });
+    earthquakeMarker.bindPopup("Deodoro - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.8596, -43.4030],
+        { title: 'Vila Militar' });
+    earthquakeMarker.bindPopup("Vila Militar - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.8776, -43.3805],
+        { title: 'Campo dos Afonsos' });
+    earthquakeMarker.bindPopup("Campo dos Afonsos - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    //var earthquakeMarker = L.marker([-22.8952, -43.3943],//
+    //    { title: 'Jardim Sulacap' });//
+    //earthquakeMarker.bindPopup("Jardim Sulacap - Bloco 3");//
+    //earthquakeMarker.addTo(map);//
+
+    var earthquakeMarker = L.marker([-22.8711, -43.4135],
+        { title: 'Magalhães Bastos' });
+    earthquakeMarker.bindPopup("Magalhães Bastos - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+   // var earthquakeMarker = L.marker([-22.8768, -43.4303],
+   //     { title: 'Realengo' }); //
+   // earthquakeMarker.bindPopup("Realengo - Bloco 3");//
+   // earthquakeMarker.addTo(map); //
+
+    var earthquakeMarker = L.marker([-22.8748, -43.5199],
+        { title: 'Santíssimo' });
+    earthquakeMarker.bindPopup("Santíssimo - Bloco 3");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.9027, -43.5594],
+        { title: 'Campo Grande' });
+    earthquakeMarker.bindPopup("Campo Grande - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.8945, -43.5301],
+        { title: 'Senador Vasconcelos' });
+    earthquakeMarker.bindPopup("Senador Vasconcelos - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9127, -43.5934],
+        { title: 'Inhoaíba' });
+    earthquakeMarker.bindPopup("Inhoaíba - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9075, -43.6145],
+        { title: 'Cosmos' });
+    earthquakeMarker.bindPopup("Cosmos - Bloco 3");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-22.8983, -43.6363],
+        { title: 'Paciência' });
+    earthquakeMarker.bindPopup("Paciência - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9173, -43.6830],
+        { title: 'Santa Cruz' });
+    earthquakeMarker.bindPopup("Santa Cruz - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9674, -43.6942],
+        { title: 'Sepetiba' });
+    earthquakeMarker.bindPopup("Sepetiba - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9897, -43.5848],
+        { title: 'Guaratiba' });
+    earthquakeMarker.bindPopup("Guaratiba - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-23.0352, -43.5536],
+        { title: 'Barra de Guaratiba' });
+    earthquakeMarker.bindPopup("Barra de Guaratiba - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9973, -43.6398],
+        { title: 'Pedra de Guaratiba' });
+    earthquakeMarker.bindPopup("Pedra de Guaratiba - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+	var earthquakeMarker = L.marker([-22.8556, -43.4899],
+        { title: 'Vila Kennedy' });
+    earthquakeMarker.bindPopup("Vila Kennedy - Bloco 3");
+    earthquakeMarker.addTo(map);
+
+
+	// CEDAE //
+
+    var earthquakeMarker = L.marker([-23.0053, -44.3158],
+        { title: 'Angra dos Reis' });
+    earthquakeMarker.bindPopup("Angra dos Reis - CEDAE");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.4688, -43.8251],
+        { title: 'Barra do Piraí' });
+    earthquakeMarker.bindPopup("Barra do Piraí - CEDAE");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-21.4895, -41.6152],
+        { title: 'Cardoso Moreira' });
+    earthquakeMarker.bindPopup("Cardoso Moreira - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.5499, -43.6783],
+        { title: 'Engenheiro Paulo de Frontin' });
+    earthquakeMarker.bindPopup("Engenheiro Paulo de Frontin - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.4208, -41.6907],
+        { title: 'Italva' });
+    earthquakeMarker.bindPopup("Italva - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.2082, -42.1228],
+        { title: 'Laje do Muriaé' });
+    earthquakeMarker.bindPopup("Laje do Muriaé - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.3710, -41.7866],
+        { title: 'Macaé' });
+    earthquakeMarker.bindPopup("Macaé - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.9598, -44.0411],
+        { title: 'Mangaratiba' });
+    earthquakeMarker.bindPopup("Mangaratiba - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-20.9626, -42.0406],
+        { title: 'Porciúncula' });
+    earthquakeMarker.bindPopup("Porciúncula - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.1071, -41.4724],
+        { title: 'Quissamã' });
+    earthquakeMarker.bindPopup("Quissamã - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.9555, -42.0083],
+        { title: 'Santa Maria Madalena' });
+    earthquakeMarker.bindPopup("Santa Maria Madalena - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.6344, -41.0488],
+        { title: 'São João da Barra' });
+    earthquakeMarker.bindPopup("São João da Barra - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-21.9946, -42.9138],
+        { title: 'Sapucaia' });
+    earthquakeMarker.bindPopup("Sapucaia - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.0497, -42.6742],
+        { title: 'Sumidouro' });
+    earthquakeMarker.bindPopup("Sumidouro - CEDAE");
+    earthquakeMarker.addTo(map);
+
+    var earthquakeMarker = L.marker([-22.4158, -42.9753],
+        { title: 'Teresópolis' });
+    earthquakeMarker.bindPopup("Teresópolis - ");
+    earthquakeMarker.addTo(map);
+	
+    var earthquakeMarker = L.marker([-22.2453, -43.6998],
+        { title: 'Valença' });
+    earthquakeMarker.bindPopup("Valença - CEDAE");
+    earthquakeMarker.addTo(map);	
+
+    var earthquakeMarker = L.marker([-20.9303, -41.8679],
+        { title: 'Varre Sai' });
+    earthquakeMarker.bindPopup("Varre Sai - CEDAE");
+    earthquakeMarker.addTo(map);
+
+
+
+    var cedaeIcon = new L.Icon({
+        iconUrl: 'https://teste.cedae.com.br/DesktopModules/cedae_public_StoreLocator/css/images/map-pin.png',
+        iconSize: [31, 39],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+        // L.marker([-22.8630, -43.5762], { icon: cedaeIcon }).addTo(map); 
+       	// L.marker([-21.62239, -42.10242], { icon: cedaeIcon }).addTo(map); 
+        // L.marker([-21.4132, -42.1972], { icon: cedaeIcon }).addTo(map); 
+
+</script>
+
+<div>
+<p>&nbsp;</p>
+
+<h2 class="titulo-5">Mapa da operação</h2>
+
+<div class="box-image">
+<div class="image"><a href="https://storage.googleapis.com/site-cedae/concessao/MAPA%20SITE%2020210930.png"><img alt="" src="https://storage.googleapis.com/site-cedae/concessao/MAPA%20SITE%2020210930.png" /></a></div>
+
+<div class="texto">
+<p>Divisão dos Blocos da Concessão de Saneamento</p>
+</div>
+</div>
+</div>
